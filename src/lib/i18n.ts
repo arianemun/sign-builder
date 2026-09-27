@@ -26,6 +26,7 @@ export const copy = {
   clearForm: 'پاک کردن',
   previewTitle: 'پیش‌نمایش در ایمیل',
   copyHtml: 'کپی کردن امضای HTML',
+  copyPreparing: 'در حال آماده‌سازی فونت…',
   copied: 'کپی شد!',
   copyFailed: 'کپی انجام نشد. دوباره تلاش کنید.',
   copyHint:

@@ -3,6 +3,7 @@ import type { SignatureFormData, SignatureLang } from '../types'
 import { EMAIL_DOMAIN, fullEmail } from '../types'
 import { copy } from '../lib/i18n'
 import { loadPeydaFonts } from '../lib/loadPeyda'
+import { renderTextPng, uploadSigPng } from '../lib/renderSigText'
 import { StepIcon } from './StepIcon'
 import {
   SIGNATURE_HEIGHT,
@@ -76,11 +77,8 @@ export function SignaturePreview({
   const assetBase =
     typeof window !== 'undefined' ? window.location.origin : undefined
   const html = buildSignatureHtml(data, signatureLang, { assetBase })
-  const copyHtml = buildSignatureHtml(data, signatureLang, {
-    assetBase: 'https://sign.sepfa.ir',
-  })
   const ready = canCopySignature(data, signatureLang)
-  const [status, setStatus] = useState<'idle' | 'ok' | 'err'>('idle')
+  const [status, setStatus] = useState<'idle' | 'ok' | 'err' | 'busy'>('idle')
   const [fontsReady, setFontsReady] = useState(false)
   const timer = useRef<number | null>(null)
   const frameRef = useRef<HTMLDivElement>(null)
@@ -90,6 +88,7 @@ export function SignaturePreview({
   const bodyText =
     signatureLang === 'fa' ? copy.mailBodyFa : copy.mailBodyEn
   const bodyDir = signatureLang === 'fa' ? 'rtl' : 'ltr'
+  const copyAssetBase = 'https://sign.sepfa.ir'
 
   useEffect(() => {
     let cancelled = false
@@ -132,8 +131,81 @@ export function SignaturePreview({
   }, [html, signatureLang, fontsReady])
 
   const handleCopy = async () => {
-    if (!ready || !frameRef.current) return
-    const ok = await copySignatureFromElement(frameRef.current, copyHtml)
+    if (!ready || !frameRef.current || status === 'busy') return
+    setStatus('busy')
+
+    let htmlToCopy = buildSignatureHtml(data, signatureLang, {
+      assetBase: copyAssetBase,
+    })
+
+    if (signatureLang === 'fa') {
+      try {
+        await loadPeydaFonts()
+        const nameText = data.nameFa.trim() || data.nameEn.trim() || 'نام شما'
+        const titleText = data.titleFa.trim() || data.titleEn.trim()
+        const stayText = 'با ما در ارتباط باشید'
+
+        const [namePng, titlePng, stayPng] = await Promise.all([
+          renderTextPng({
+            text: nameText,
+            fontSize: 24,
+            fontWeight: 700,
+            dir: 'rtl',
+          }),
+          titleText
+            ? renderTextPng({
+                text: titleText,
+                fontSize: 10,
+                fontWeight: 500,
+                dir: 'rtl',
+              })
+            : Promise.resolve(null),
+          renderTextPng({
+            text: stayText,
+            fontSize: 8,
+            fontWeight: 400,
+            dir: 'rtl',
+          }),
+        ])
+
+        const [nameUrl, titleUrl, stayUrl] = await Promise.all([
+          uploadSigPng(namePng.dataUrl, copyAssetBase),
+          titlePng
+            ? uploadSigPng(titlePng.dataUrl, copyAssetBase)
+            : Promise.resolve(''),
+          uploadSigPng(stayPng.dataUrl, copyAssetBase),
+        ])
+
+        htmlToCopy = buildSignatureHtml(data, signatureLang, {
+          assetBase: copyAssetBase,
+          textImages: {
+            name: {
+              src: nameUrl,
+              width: namePng.width,
+              height: namePng.height,
+            },
+            ...(titlePng && titleUrl
+              ? {
+                  title: {
+                    src: titleUrl,
+                    width: titlePng.width,
+                    height: titlePng.height,
+                  },
+                }
+              : {}),
+            stay: {
+              src: stayUrl,
+              width: stayPng.width,
+              height: stayPng.height,
+            },
+          },
+        })
+      } catch {
+        // Fall back to Tahoma HTML text if upload/render fails
+      }
+    }
+
+    const ok = await copySignatureFromElement(frameRef.current, htmlToCopy)
     setStatus(ok ? 'ok' : 'err')
     if (timer.current) window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => setStatus('idle'), 2200)
@@ -318,7 +390,7 @@ export function SignaturePreview({
           type="button"
           className="btn primary"
           onClick={handleCopy}
-          disabled={!ready}
+          disabled={!ready || status === 'busy'}
         >
           {status === 'ok' ? (
             <svg className="btn-icon" viewBox="0 0 24 24" aria-hidden>
@@ -353,7 +425,11 @@ export function SignaturePreview({
               />
             </svg>
           )}
-          {status === 'ok' ? copy.copied : copy.copyHtml}
+          {status === 'busy'
+            ? copy.copyPreparing
+            : status === 'ok'
+              ? copy.copied
+              : copy.copyHtml}
         </button>
         {!ready && <p className="hint">{copy.requiredNote}</p>}
         {status === 'err' && <p className="hint error">{copy.copyFailed}</p>}

@@ -1,0 +1,9 @@
+# Deny script execution in cache directory
+<IfModule mod_authz_core.c>
+  Require all granted
+</IfModule>
+<FilesMatch "\.(?i:php|phtml|php\d+|phar|cgi|pl|py|jsp|asp|aspx|sh)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>

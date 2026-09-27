@@ -14,6 +14,12 @@ const DEFAULT_ASSET_BASE = 'https://sign.sepfa.ir'
 export interface SignatureHtmlOptions {
   /** Absolute origin for hosted PNG assets, e.g. https://sign.sepfa.ir */
   assetBase?: string
+  /** Pre-rendered Peyda text images (hosted URLs) for FA name/title */
+  textImages?: {
+    name?: { src: string; width: number; height: number }
+    title?: { src: string; width: number; height: number }
+    stay?: { src: string; width: number; height: number }
+  }
 }
 
 function resolveAssetBase(override?: string): string {
@@ -109,9 +115,15 @@ function imgTag(src: string, width: number, height: number, alt: string): string
  * - nested tables + bgcolor (Outlook/Word)
  * - hosted PNG images with absolute https URLs (Gmail blocks data:/SVG)
  */
-function buildFa(data: SignatureFormData, assetBase: string): string {
-  const name = escapeXml(data.nameFa || data.nameEn || 'نام شما')
-  const title = escapeXml(data.titleFa || data.titleEn || '')
+function buildFa(
+  data: SignatureFormData,
+  assetBase: string,
+  textImages?: SignatureHtmlOptions['textImages'],
+): string {
+  const nameRaw = data.nameFa || data.nameEn || 'نام شما'
+  const titleRaw = data.titleFa || data.titleEn || ''
+  const name = escapeXml(nameRaw)
+  const title = escapeXml(titleRaw)
   const phoneRaw = data.phone || '021-62040'
   const mobileRaw = data.mobile || ''
   const phoneValue = escapeXml(formatPhoneValueFa(phoneRaw, data.phoneExt))
@@ -134,6 +146,27 @@ function buildFa(data: SignatureFormData, assetBase: string): string {
   ) =>
     `<tr><td align="right" dir="rtl" style="padding:${padTop}px 0 0 0;margin:0;font-family:${faFont};font-size:${size}px;font-weight:${weight};line-height:1.25;color:${INK};mso-line-height-rule:exactly;">${content}</td></tr>`
 
+  const nameCell = textImages?.name?.src
+    ? imgTag(
+        textImages.name.src,
+        textImages.name.width,
+        textImages.name.height,
+        nameRaw,
+      )
+    : name
+  const titleCell =
+    titleRaw && textImages?.title?.src
+      ? imgTag(
+          textImages.title.src,
+          textImages.title.width,
+          textImages.title.height,
+          titleRaw,
+        )
+      : title
+  const stayCell = textImages?.stay?.src
+    ? `<a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">${imgTag(textImages.stay.src, textImages.stay.width, textImages.stay.height, 'با ما در ارتباط باشید')}</a>`
+    : mailLink(SITE_URL, 'با ما در ارتباط باشید', faFont, 8)
+
   const phoneCell = phoneTel
     ? `تلفن:&nbsp;${mailLink(phoneTel, phoneValue, faFont, 11)}`
     : `تلفن:&nbsp;${phoneValue}`
@@ -146,8 +179,8 @@ function buildFa(data: SignatureFormData, assetBase: string): string {
 
   const textBlock = `
 <table dir="rtl" lang="fa" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;">
-  ${line(name, 24, 700)}
-  ${title ? line(title, 10, 500, 6) : ''}
+  ${line(nameCell, 24, 700)}
+  ${titleRaw ? line(titleCell, 10, 500, 6) : ''}
   ${line(phoneCell, 10, 400, 10)}
   ${mobile ? line(mobileCell, 11, 400, 3) : ''}
   ${line(emailCell, 10, 400, 3)}
@@ -170,7 +203,7 @@ function buildFa(data: SignatureFormData, assetBase: string): string {
       <table dir="rtl" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;width:100%;">
         <tr>
           <td width="120" valign="bottom" align="right" style="padding:0;font-family:${faFont};font-size:8px;line-height:1.3;color:${INK};">
-            ${mailLink(SITE_URL, 'با ما در ارتباط باشید', faFont, 8)}
+            ${stayCell}
           </td>
           <td width="171" valign="bottom" align="center" style="padding:0 6px;">
             <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">
@@ -269,12 +302,12 @@ export function buildSignatureHtml(
   options: SignatureHtmlOptions = {},
 ): string {
   const assetBase = resolveAssetBase(options.assetBase)
-  const html = lang === 'fa' ? buildFa(data, assetBase) : buildEn(data, assetBase)
+  const html =
+    lang === 'fa'
+      ? buildFa(data, assetBase, options.textImages)
+      : buildEn(data, assetBase)
   /* Outer wrapper class for preview scaling only — Gmail strips class, keeps table */
-  return html.replace(
-    '<table ',
-    '<table class="sig-root" ',
-  )
+  return html.replace('<table ', '<table class="sig-root" ')
 }
 
 export function canCopySignature(
