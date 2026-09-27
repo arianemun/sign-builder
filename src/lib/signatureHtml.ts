@@ -11,14 +11,36 @@ const SITE_URL = 'https://sepex.net'
 /** Fallback when building outside the browser (or unknown host) */
 const DEFAULT_ASSET_BASE = 'https://sign.sepfa.ir'
 
+export interface TextImage {
+  src: string
+  width: number
+  height: number
+}
+
 export interface SignatureHtmlOptions {
   /** Absolute origin for hosted PNG assets, e.g. https://sign.sepfa.ir */
   assetBase?: string
-  /** Pre-rendered Peyda text images (hosted URLs) for FA name/title */
+  /** Pre-rendered Peyda text images (hosted URLs) for FA text lines */
   textImages?: {
-    name?: { src: string; width: number; height: number }
-    title?: { src: string; width: number; height: number }
-    stay?: { src: string; width: number; height: number }
+    name?: TextImage
+    title?: TextImage
+    stay?: TextImage
+    phone?: TextImage
+    mobile?: TextImage
+    email?: TextImage
+  }
+}
+
+/** Visible FA contact values, shared by the HTML and the PNG renderer. */
+export function faContactValues(data: SignatureFormData): {
+  phone: string
+  mobile: string
+  email: string
+} {
+  return {
+    phone: formatPhoneValueFa(data.phone || '021-62040', data.phoneExt),
+    mobile: toFaDigits(data.mobile || ''),
+    email: fullEmail(data.email),
   }
 }
 
@@ -167,15 +189,28 @@ function buildFa(
     ? `<a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">${imgTag(textImages.stay.src, textImages.stay.width, textImages.stay.height, 'با ما در ارتباط باشید')}</a>`
     : mailLink(SITE_URL, 'با ما در ارتباط باشید', faFont, 8)
 
-  const phoneCell = phoneTel
-    ? `تلفن:&nbsp;${mailLink(phoneTel, phoneValue, faFont, 11)}`
-    : `تلفن:&nbsp;${phoneValue}`
-  const mobileCell = mobileTel
-    ? mailLink(mobileTel, mobile, faFont, 11)
-    : mobile
-  const emailCell = emailAddr
-    ? `ایمیل:&nbsp;${mailLink(`mailto:${emailAddr}`, email, enFont, 11)}`
-    : `ایمیل:&nbsp;${email}`
+  const linkedImg = (href: string, img: TextImage, alt: string) => {
+    const tag = imgTag(img.src, img.width, img.height, alt)
+    return href
+      ? `<a href="${escapeXml(href)}" style="text-decoration:none;border:0;outline:none;">${tag}</a>`
+      : tag
+  }
+
+  const phoneCell = textImages?.phone?.src
+    ? linkedImg(phoneTel, textImages.phone, `تلفن: ${phoneRaw}`)
+    : phoneTel
+      ? `تلفن:&nbsp;<span dir="ltr">${mailLink(phoneTel, phoneValue, faFont, 11)}</span>`
+      : `تلفن:&nbsp;<span dir="ltr">${phoneValue}</span>`
+  const mobileCell = textImages?.mobile?.src
+    ? linkedImg(mobileTel, textImages.mobile, mobileRaw)
+    : mobileTel
+      ? mailLink(mobileTel, mobile, faFont, 11)
+      : mobile
+  const emailCell = textImages?.email?.src
+    ? linkedImg(emailAddr ? `mailto:${emailAddr}` : '', textImages.email, emailAddr)
+    : emailAddr
+      ? `ایمیل:&nbsp;${mailLink(`mailto:${emailAddr}`, email, enFont, 11)}`
+      : `ایمیل:&nbsp;${email}`
 
   const textBlock = `
 <table dir="rtl" lang="fa" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;">
@@ -186,32 +221,37 @@ function buildFa(
   ${line(emailCell, 10, 400, 3)}
 </table>`.trim()
 
+  /*
+   * Cells are listed in visual left-to-right order and the structural tables
+   * are dir="ltr": Gmail drops dir="rtl" on paste, Outlook keeps it, so an
+   * RTL table would flip the logo side between clients.
+   */
   return `
-<table dir="rtl" lang="fa" cellpadding="0" cellspacing="0" border="0" width="${SIGNATURE_WIDTH}" role="presentation" style="width:${SIGNATURE_WIDTH}px;max-width:${SIGNATURE_WIDTH}px;border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:${YELLOW};">
+<table dir="ltr" lang="fa" cellpadding="0" cellspacing="0" border="0" width="${SIGNATURE_WIDTH}" role="presentation" style="width:${SIGNATURE_WIDTH}px;max-width:${SIGNATURE_WIDTH}px;border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:${YELLOW};">
   <tr>
-    <td width="128" valign="middle" align="center" bgcolor="${YELLOW}" style="width:128px;padding:28px 14px 10px 10px;background-color:${YELLOW};">
+    <td width="283" valign="top" align="right" bgcolor="${YELLOW}" style="width:283px;padding:16px 10px 4px 14px;background-color:${YELLOW};">
+      ${textBlock}
+    </td>
+    <td width="128" rowspan="2" valign="middle" align="center" bgcolor="${YELLOW}" style="width:128px;padding:10px 14px 10px 10px;background-color:${YELLOW};">
       <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">
         ${imgTag(markSrc, 102, 41, 'SEPEX')}
       </a>
     </td>
-    <td width="283" valign="top" bgcolor="${YELLOW}" style="width:283px;padding:16px 14px 6px 8px;background-color:${YELLOW};">
-      ${textBlock}
-    </td>
   </tr>
   <tr>
-    <td colspan="2" bgcolor="${YELLOW}" style="padding:8px 16px 14px 16px;background-color:${YELLOW};">
-      <table dir="rtl" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;width:100%;">
+    <td valign="bottom" align="right" bgcolor="${YELLOW}" style="padding:10px 10px 14px 14px;background-color:${YELLOW};">
+      <table dir="ltr" align="right" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border-spacing:0;">
         <tr>
-          <td width="120" valign="bottom" align="right" style="padding:0;font-family:${faFont};font-size:8px;line-height:1.3;color:${INK};">
-            ${stayCell}
+          <td valign="middle" align="center" style="padding:0 12px 0 0;font-family:${enFont};font-size:8px;line-height:1.3;color:${INK};">
+            <table cellpadding="0" cellspacing="0" border="0" role="presentation" align="center" style="border-collapse:collapse;border-spacing:0;">
+              <tr><td align="center" dir="rtl" style="padding:0;font-family:${faFont};font-size:8px;line-height:1.3;color:${INK};">${stayCell}</td></tr>
+              <tr><td align="center" dir="ltr" style="padding:2px 0 0 0;font-family:${enFont};font-size:8px;font-weight:700;line-height:1.3;color:${INK};">${mailLink(SITE_URL, 'sepex.net', enFont, 8, 700)}</td></tr>
+            </table>
           </td>
-          <td width="171" valign="bottom" align="center" style="padding:0 6px;">
+          <td valign="middle" align="right" style="padding:0;">
             <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">
               ${imgTag(wordSrc, 98, 23, 'SEPEX')}
             </a>
-          </td>
-          <td width="120" valign="bottom" align="left" dir="ltr" style="padding:0;font-family:${enFont};font-size:8px;font-weight:600;line-height:1.3;color:${INK};">
-            ${mailLink(SITE_URL, 'sepex.net', enFont, 8, 600)}
           </td>
         </tr>
       </table>

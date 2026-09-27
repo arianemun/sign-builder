@@ -3,13 +3,20 @@ import type { SignatureFormData, SignatureLang } from '../types'
 import { EMAIL_DOMAIN, fullEmail } from '../types'
 import { copy } from '../lib/i18n'
 import { loadPeydaFonts } from '../lib/loadPeyda'
-import { renderTextPng, uploadSigPng } from '../lib/renderSigText'
+import {
+  HELVETICA_STACK,
+  PEYDA_STACK,
+  renderSegmentsPng,
+  renderTextPng,
+  uploadSigPng,
+} from '../lib/renderSigText'
 import { StepIcon } from './StepIcon'
 import {
   SIGNATURE_HEIGHT,
   SIGNATURE_WIDTH,
   buildSignatureHtml,
   canCopySignature,
+  faContactValues,
 } from '../lib/signatureHtml'
 
 interface SignaturePreviewProps {
@@ -144,6 +151,47 @@ export function SignaturePreview({
         const nameText = data.nameFa.trim() || data.nameEn.trim() || 'نام شما'
         const titleText = data.titleFa.trim() || data.titleEn.trim()
         const stayText = 'با ما در ارتباط باشید'
+        const contact = faContactValues(data)
+        const infoLine = (label: string, value: string, valueFont: string) =>
+          renderSegmentsPng({
+            dir: 'rtl',
+            segments: [
+              ...(label
+                ? [{ text: label, fontSize: 10, fontWeight: 400, dir: 'rtl' as const }]
+                : []),
+              {
+                text: value,
+                fontSize: 11,
+                fontWeight: 400,
+                fontFamily: valueFont,
+                dir: 'ltr' as const,
+              },
+            ],
+          })
+
+        const contactPngs = await Promise.all([
+          infoLine('تلفن:', contact.phone, PEYDA_STACK),
+          contact.mobile
+            ? infoLine('', contact.mobile, PEYDA_STACK)
+            : Promise.resolve(null),
+          contact.email
+            ? infoLine('ایمیل:', contact.email, HELVETICA_STACK)
+            : Promise.resolve(null),
+        ])
+        const contactUrls = await Promise.all(
+          contactPngs.map((png) =>
+            png?.dataUrl
+              ? uploadSigPng(png.dataUrl, copyAssetBase)
+              : Promise.resolve(''),
+          ),
+        )
+        const contactImage = (i: number) => {
+          const png = contactPngs[i]
+          const src = contactUrls[i]
+          return png && src
+            ? { src, width: png.width, height: png.height }
+            : undefined
+        }
 
         const [namePng, titlePng, stayPng] = await Promise.all([
           renderTextPng({
@@ -198,6 +246,9 @@ export function SignaturePreview({
               width: stayPng.width,
               height: stayPng.height,
             },
+            phone: contactImage(0),
+            mobile: contactImage(1),
+            email: contactImage(2),
           },
         })
       } catch {
