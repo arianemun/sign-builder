@@ -9,7 +9,6 @@ import {
   type SignatureLang,
 } from './types'
 import { copy } from './lib/i18n'
-import markUrl from './assets/sepex-mark.svg'
 import './App.css'
 
 function App() {
@@ -21,19 +20,6 @@ function App() {
       <div className="bg-glow" aria-hidden />
       <div className="bg-glow bg-glow-alt" aria-hidden />
       <div className="bg-grid" aria-hidden />
-
-      <header className="topbar">
-        <div className="brand">
-          <img src={markUrl} alt="" className="brand-logo" />
-          <h1>
-            <span className="brand-name">SEPEX</span>
-            <span className="brand-sep" aria-hidden>
-              ·
-            </span>
-            <span className="brand-title">{copy.appTitle}</span>
-          </h1>
-        </div>
-      </header>
 
       <main className="layout">
         <section className="hero">

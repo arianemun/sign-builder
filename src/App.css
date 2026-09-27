@@ -80,71 +80,10 @@ body {
   z-index: 0;
 }
 
-.topbar,
 .layout,
 .footer {
   position: relative;
   z-index: 1;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  padding: 0.65rem var(--pad-x);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(12, 12, 12, 0.55);
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  min-width: 0;
-}
-
-.brand-logo {
-  width: 44px;
-  height: 24px;
-  object-fit: contain;
-  background: var(--yellow);
-  border-radius: 6px;
-  padding: 4px 5px;
-  flex-shrink: 0;
-}
-
-.brand h1 {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-  font-size: 0.92rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.brand-name {
-  color: var(--yellow);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  font-size: 0.78rem;
-}
-
-.brand-sep {
-  color: rgba(255, 255, 255, 0.28);
-  font-weight: 400;
-}
-
-.brand-title {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .layout {
@@ -698,6 +637,12 @@ body {
 .mail-from-text strong {
   font-weight: 600;
   color: #201f1e;
+  font-family: 'Peyda', Tahoma, sans-serif;
+}
+
+.signature-frame.is-fonts-ready .sig-fa {
+  /* Peyda metrics locked in after load — avoids swap jump looking “ریخته” */
+  font-family: 'Peyda', Tahoma, Arial, sans-serif !important;
 }
 
 .mail-from-text span {
@@ -777,8 +722,38 @@ body {
 }
 
 .signature-frame {
-  width: 411px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 411px;
+  overflow: hidden;
+  /* height set by JS scale fit for FA HTML overlay */
+}
+
+.signature-frame > table {
+  display: block;
+}
+
+/* FA HTML signature: lock pixel canvas so overlay text stays aligned */
+.signature-frame .sig-root {
+  width: 411px !important;
+  max-width: none !important;
+  height: 172px !important;
+  overflow: hidden !important;
+  /* Beat .mail-window Segoe UI so Peyda always wins in preview */
+  font-family: 'Peyda', Tahoma, Arial, sans-serif !important;
+}
+
+.signature-frame .sig-root .sig-fa,
+.signature-frame .sig-root .sig-fa a {
+  font-family: 'Peyda', Tahoma, Arial, sans-serif !important;
+  letter-spacing: normal !important;
+  font-synthesis: none;
+}
+
+.signature-frame .sig-root .sig-bg,
+.signature-frame .sig-root > img {
+  max-width: none !important;
+  width: 411px !important;
+  height: 172px !important;
 }
 
 .mail-signature {
@@ -787,8 +762,8 @@ body {
   filter: none;
 }
 
-.signature-frame svg,
-.signature-frame img {
+/* EN SVG may shrink via viewBox; FA bg image must NOT (see .sig-root rules) */
+.signature-frame svg {
   max-width: 100%;
   height: auto;
   display: block;
@@ -1050,23 +1025,6 @@ body {
 
 /* Mobile */
 @media (max-width: 719px) {
-  .topbar {
-    padding-block: 0.55rem;
-  }
-
-  .brand-logo {
-    width: 40px;
-    height: 22px;
-  }
-
-  .brand h1 {
-    font-size: 0.84rem;
-  }
-
-  .brand-name {
-    letter-spacing: 0.08em;
-  }
-
   .panel-head {
     flex-direction: column;
   }

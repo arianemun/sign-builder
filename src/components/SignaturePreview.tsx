@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { SignatureFormData, SignatureLang } from '../types'
 import { EMAIL_DOMAIN, fullEmail } from '../types'
 import { copy } from '../lib/i18n'
+import { loadPeydaFonts } from '../lib/loadPeyda'
 import {
+  SIGNATURE_HEIGHT,
+  SIGNATURE_WIDTH,
   buildSignatureHtml,
   canCopySignature,
 } from '../lib/signatureHtml'
@@ -72,6 +75,7 @@ export function SignaturePreview({
   const html = buildSignatureHtml(data, signatureLang)
   const ready = canCopySignature(data, signatureLang)
   const [status, setStatus] = useState<'idle' | 'ok' | 'err'>('idle')
+  const [fontsReady, setFontsReady] = useState(false)
   const timer = useRef<number | null>(null)
   const frameRef = useRef<HTMLDivElement>(null)
 
@@ -82,10 +86,49 @@ export function SignaturePreview({
   const bodyDir = signatureLang === 'fa' ? 'rtl' : 'ltr'
 
   useEffect(() => {
+    let cancelled = false
+    void loadPeydaFonts().then(() => {
+      if (!cancelled) setFontsReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     return () => {
       if (timer.current) window.clearTimeout(timer.current)
     }
   }, [])
+
+  /* Scale FA HTML signature as one unit — never let the bg image shrink alone */
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+
+    const fit = () => {
+      const table = frame.querySelector('table')
+      if (!table) return
+
+      const isFaHtml = Boolean(frame.querySelector('.sig-root'))
+      const available = frame.clientWidth || SIGNATURE_WIDTH
+      const scale = isFaHtml
+        ? Math.min(1, available / SIGNATURE_WIDTH)
+        : 1
+
+      table.style.transformOrigin =
+        signatureLang === 'fa' ? 'top right' : 'top left'
+      table.style.transform = scale < 0.999 ? `scale(${scale})` : ''
+      frame.style.height = isFaHtml
+        ? `${Math.round(SIGNATURE_HEIGHT * scale)}px`
+        : ''
+    }
+
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(frame)
+    return () => ro.disconnect()
+  }, [html, signatureLang, fontsReady])
 
   const handleCopy = async () => {
     if (!ready || !frameRef.current) return
@@ -223,7 +266,7 @@ export function SignaturePreview({
 
             <div
               ref={frameRef}
-              className="signature-frame mail-signature"
+              className={`signature-frame mail-signature${fontsReady ? ' is-fonts-ready' : ''}`}
               dir={bodyDir}
               style={{ unicodeBidi: 'isolate' }}
               dangerouslySetInnerHTML={{ __html: html }}

@@ -25,11 +25,8 @@ const LOGO_HIT = {
 } as const
 
 /**
- * Layout from outlined glyph boxes in EN.svg / FA.svg.
- * Rendered as SVG <text> so `y` is the true alphabetic baseline
- * (CSS absolute + line-height cannot do this reliably).
- *
- * Font sizes calibrated via canvas measureText to match ink width.
+ * EN stays SVG <text> (Latin renders fine).
+ * FA uses HTML overlay — mobile WebKit breaks Persian shaping in SVG <text>.
  */
 const EN = {
   name: { x: 155.65, y: 38.8, fontSize: 24.55, letterSpacing: 0 },
@@ -43,16 +40,17 @@ const EN = {
   website: { x: 275.92, y: 143.57, fontSize: 7.9, letterSpacing: 0.004 },
 } as const
 
-const FA = {
-  name: { x: 257.7, y: 41.01, fontSize: 24.85, letterSpacing: 0.009 },
-  title: { x: 254.59, y: 57.9, fontSize: 9.7, letterSpacing: 0.013 },
-  phoneLabel: { x: 257.12, y: 78.49, fontSize: 9.5, letterSpacing: 0.001 },
-  phoneValue: { x: 233.93, y: 80.63, fontSize: 10.6, letterSpacing: 0.012 },
-  mobile: { x: 232.96, y: 92.22, fontSize: 11.05, letterSpacing: 0.012 },
-  emailLabel: { x: 256.24, y: 105.27, fontSize: 9.55, letterSpacing: 0 },
-  emailValue: { x: 229.87, y: 105.75, fontSize: 10.5, letterSpacing: -0.001 },
-  stayInTouch: { x: 133.74, y: 134.37, fontSize: 7.95, letterSpacing: 0 },
-  website: { x: 97.56, y: 143.57, fontSize: 7.9, letterSpacing: 0.004 },
+/** FA positions: ink-box tops + right edges from FA.svg (no letter-spacing — breaks Arabic join on mobile) */
+const FA_HTML = {
+  name: { right: 153.3, top: 22.5, fontSize: 24.85, weight: 700 },
+  title: { right: 156.41, top: 50.2, fontSize: 9.7, weight: 500 },
+  phoneLabel: { right: 153.88, top: 71.8, fontSize: 9.5, weight: 400 },
+  phoneValue: { right: 177.07, top: 71.2, fontSize: 10.6, weight: 400 },
+  mobile: { right: 178.04, top: 84.6, fontSize: 11.05, weight: 400 },
+  emailLabel: { right: 154.76, top: 97.6, fontSize: 9.55, weight: 400 },
+  emailValue: { right: 181.13, top: 97.2, fontSize: 10.5, weight: 400 },
+  stayInTouch: { right: 277.26, top: 128.8, fontSize: 7.95, weight: 400 },
+  website: { left: 97.56, top: 138.2, fontSize: 7.9, weight: 600 },
 } as const
 
 function escapeXml(value: string): string {
@@ -125,6 +123,16 @@ function logoHitAreas(lang: SignatureLang): string {
   ].join('\n        ')
 }
 
+function htmlLogoHits(lang: SignatureLang): string {
+  const hits = LOGO_HIT[lang]
+  const linkStyle =
+    'position:absolute;display:block;z-index:2;text-decoration:none;'
+  return [
+    `<a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="${linkStyle}left:${hits.mark.x}px;top:${hits.mark.y}px;width:${hits.mark.w}px;height:${hits.mark.h}px;" aria-label="SEPEX"></a>`,
+    `<a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="${linkStyle}left:${hits.wordmark.x}px;top:${hits.wordmark.y}px;width:${hits.wordmark.w}px;height:${hits.wordmark.h}px;" aria-label="sepex.net"></a>`,
+  ].join('')
+}
+
 function svgText(opts: {
   x: number
   y: number
@@ -152,16 +160,61 @@ function svgText(opts: {
   return text
 }
 
+function htmlText(opts: {
+  left?: number
+  right?: number
+  top: number
+  fontSize: number
+  font: string
+  weight?: number
+  align?: 'left' | 'right'
+  dir?: 'ltr' | 'rtl'
+  href?: string
+  content: string
+}): string {
+  const weight = opts.weight ?? 400
+  const align =
+    opts.align ?? (opts.right !== undefined ? 'right' : 'left')
+  const horiz =
+    opts.right !== undefined
+      ? `right:${opts.right}px;left:auto;`
+      : `left:${opts.left ?? 0}px;`
+  const dir = opts.dir ?? 'rtl'
+  const isFa = dir === 'rtl' || /Peyda/i.test(opts.font)
+  const style = `position:absolute;${horiz}top:${opts.top}px;z-index:1;margin:0;padding:0;font-family:${opts.font};font-size:${opts.fontSize}px;line-height:1.2;font-weight:${weight};color:${INK};white-space:nowrap;text-align:${align};letter-spacing:normal;unicode-bidi:isolate;-webkit-font-smoothing:antialiased;`
+  const inner = opts.href
+    ? `<a href="${escapeXml(opts.href)}"${opts.href.startsWith('http') ? ' target="_blank" rel="noopener noreferrer"' : ''} style="color:${INK};text-decoration:none;font:inherit;letter-spacing:normal;">${opts.content}</a>`
+    : opts.content
+  return `<div class="${isFa ? 'sig-fa' : 'sig-en'}" dir="${dir}" lang="${dir === 'rtl' ? 'fa' : 'en'}" style="${style}">${inner}</div>`
+}
+
 function wrapSvg(baseHref: string, body: string, lang: SignatureLang): string {
   return `
 <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0;mso-table-rspace:0;">
   <tr>
     <td style="padding:0;margin:0;line-height:0;font-size:0;">
-      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${SIGNATURE_WIDTH}" height="${SIGNATURE_HEIGHT}" viewBox="0 0 ${SIGNATURE_WIDTH} ${SIGNATURE_HEIGHT}" direction="ltr" style="display:block;" role="img" aria-label="SEPEX email signature">
+      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${SIGNATURE_WIDTH}" height="${SIGNATURE_HEIGHT}" viewBox="0 0 ${SIGNATURE_WIDTH} ${SIGNATURE_HEIGHT}" direction="ltr" style="display:block;max-width:100%;height:auto;" role="img" aria-label="SEPEX email signature">
         <image href="${baseHref}" xlink:href="${baseHref}" width="${SIGNATURE_WIDTH}" height="${SIGNATURE_HEIGHT}" preserveAspectRatio="none"/>
         ${logoHitAreas(lang)}
         ${body}
       </svg>
+    </td>
+  </tr>
+</table>
+  `.trim()
+}
+
+function wrapHtmlFa(body: string): string {
+  /* Fixed canvas — never shrink the overlay box; preview scales the whole table. */
+  return `
+<table class="sig-table" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0;mso-table-rspace:0;width:${SIGNATURE_WIDTH}px;">
+  <tr>
+    <td style="padding:0;margin:0;width:${SIGNATURE_WIDTH}px;height:${SIGNATURE_HEIGHT}px;">
+      <div class="sig-root" dir="rtl" lang="fa" style="position:relative;width:${SIGNATURE_WIDTH}px;height:${SIGNATURE_HEIGHT}px;overflow:hidden;line-height:normal;font-size:0;-webkit-text-size-adjust:100%;text-size-adjust:100%;">
+        <img class="sig-bg" src="${SIGNATURE_BASE_FA_DATA_URL}" width="${SIGNATURE_WIDTH}" height="${SIGNATURE_HEIGHT}" alt="" draggable="false" style="position:absolute;left:0;top:0;width:${SIGNATURE_WIDTH}px;height:${SIGNATURE_HEIGHT}px;max-width:none;display:block;border:0;outline:none;" />
+        ${htmlLogoHits('fa')}
+        ${body}
+      </div>
     </td>
   </tr>
 </table>
@@ -233,85 +286,69 @@ function buildFa(data: SignatureFormData): string {
   const email = escapeXml(emailAddr)
   const phoneTel = toTelHref(phoneRaw)
   const mobileTel = toTelHref(mobileRaw)
-  const font = 'Peyda, Tahoma, Arial, sans-serif'
+  const font = "'Peyda', Tahoma, Arial, sans-serif"
   const enFont = 'Helvetica, Arial, sans-serif'
 
-  // RTL: text-anchor="start" pins the RIGHT edge (inline-start) to x.
-  // LTR values (phone/email/web): text-anchor="end" pins the RIGHT edge.
   const body = [
-    svgText({
-      ...FA.name,
+    htmlText({ ...FA_HTML.name, font, dir: 'rtl', align: 'right', content: name }),
+    htmlText({ ...FA_HTML.title, font, dir: 'rtl', align: 'right', content: title }),
+    htmlText({
+      ...FA_HTML.phoneLabel,
       font,
-      weight: 700,
-      anchor: 'start',
-      direction: 'rtl',
-      content: name,
-    }),
-    svgText({
-      ...FA.title,
-      font,
-      weight: 500,
-      anchor: 'start',
-      direction: 'rtl',
-      content: title,
-    }),
-    svgText({
-      ...FA.phoneLabel,
-      font,
-      anchor: 'start',
-      direction: 'rtl',
+      dir: 'rtl',
+      align: 'right',
       content: 'تلفن:',
     }),
-    svgText({
-      ...FA.phoneValue,
+    htmlText({
+      ...FA_HTML.phoneValue,
       font,
-      anchor: 'end',
-      direction: 'ltr',
+      dir: 'ltr',
+      align: 'right',
       href: phoneTel || undefined,
       content: phoneValue,
     }),
-    svgText({
-      ...FA.mobile,
+    htmlText({
+      ...FA_HTML.mobile,
       font,
-      anchor: 'end',
-      direction: 'ltr',
+      dir: 'ltr',
+      align: 'right',
       href: mobileTel || undefined,
       content: mobile,
     }),
-    svgText({
-      ...FA.emailLabel,
+    htmlText({
+      ...FA_HTML.emailLabel,
       font,
-      anchor: 'start',
-      direction: 'rtl',
+      dir: 'rtl',
+      align: 'right',
       content: 'ایمیل:',
     }),
-    svgText({
-      ...FA.emailValue,
+    htmlText({
+      ...FA_HTML.emailValue,
       font: enFont,
-      anchor: 'end',
-      direction: 'ltr',
+      dir: 'ltr',
+      align: 'right',
       href: emailAddr ? `mailto:${emailAddr}` : undefined,
       content: email,
     }),
-    svgText({
-      ...FA.stayInTouch,
+    htmlText({
+      ...FA_HTML.stayInTouch,
       font,
-      anchor: 'start',
-      direction: 'rtl',
+      dir: 'rtl',
+      align: 'right',
       href: SITE_URL,
       content: 'با ما در ارتباط باشید',
     }),
-    svgText({
-      ...FA.website,
+    htmlText({
+      ...FA_HTML.website,
       font: enFont,
-      weight: 600,
-      direction: 'ltr',
+      dir: 'ltr',
+      align: 'left',
       href: SITE_URL,
       content: 'sepex.net',
     }),
-  ].join('\n        ')
+  ].join('')
 
-  return wrapSvg(SIGNATURE_BASE_FA_DATA_URL, body, 'fa')
+  return wrapHtmlFa(body)
 }
 
 export function buildSignatureHtml(
