@@ -43,7 +43,7 @@ const EN = {
 /** FA positions: ink-box tops + right edges from FA.svg (no letter-spacing — breaks Arabic join on mobile) */
 const FA_HTML = {
   name: { right: 153.3, top: 22.5, fontSize: 24.85, weight: 700 },
-  title: { right: 156.41, top: 50.2, fontSize: 9.7, weight: 500 },
+  title: { right: 156.41, top: 54.5, fontSize: 9.7, weight: 500 },
   phoneLabel: { right: 153.88, top: 71.8, fontSize: 9.5, weight: 400 },
   phoneValue: { right: 177.07, top: 71.2, fontSize: 10.6, weight: 400 },
   mobile: { right: 178.04, top: 84.6, fontSize: 11.05, weight: 400 },
