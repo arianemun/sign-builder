@@ -52,7 +52,9 @@ if (!str_starts_with($bin, "\x89PNG\r\n\x1a\n")) {
   exit;
 }
 
-$dir = __DIR__ . DIRECTORY_SEPARATOR . 'sig-cache';
+// Set SIG_CACHE_DIR (fastcgi_param) outside dist/ so rebuilds don't delete hosted images.
+$dir = $_SERVER['SIG_CACHE_DIR'] ?? getenv('SIG_CACHE_DIR') ?: (__DIR__ . DIRECTORY_SEPARATOR . 'sig-cache');
+$dir = rtrim($dir, '/\\');
 if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
   http_response_code(500);
   echo json_encode(['error' => 'mkdir_failed']);
