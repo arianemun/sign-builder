@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { copy } from '../lib/i18n'
 import { INSTALL_GUIDES } from '../lib/guides'
+import { GuideAppIcon } from './GuideAppIcon'
+import { StepIcon } from './StepIcon'
 
 export function InstallGuide() {
   const [openId, setOpenId] = useState(INSTALL_GUIDES[0]?.id ?? '')
@@ -9,7 +11,10 @@ export function InstallGuide() {
     <section className="panel guide-panel">
       <div className="panel-head">
         <div>
-          <p className="panel-eyebrow">{copy.stepGuide}</p>
+          <p className="panel-eyebrow">
+            <StepIcon kind="guide" />
+            {copy.stepGuide}
+          </p>
           <h2>{copy.guideTitle}</h2>
           <p>{copy.guideIntro}</p>
         </div>
@@ -26,7 +31,10 @@ export function InstallGuide() {
                 aria-expanded={open}
                 onClick={() => setOpenId(open ? '' : guide.id)}
               >
-                <span>{guide.title}</span>
+                <span className="guide-toggle-label">
+                  <GuideAppIcon id={guide.id} />
+                  {guide.title}
+                </span>
                 <span className="chevron" aria-hidden>
                   {open ? '−' : '+'}
                 </span>

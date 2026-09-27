@@ -3,6 +3,7 @@ import type { SignatureFormData, SignatureLang } from '../types'
 import { EMAIL_DOMAIN, fullEmail } from '../types'
 import { copy } from '../lib/i18n'
 import { loadPeydaFonts } from '../lib/loadPeyda'
+import { StepIcon } from './StepIcon'
 import {
   SIGNATURE_HEIGHT,
   SIGNATURE_WIDTH,
@@ -142,7 +143,10 @@ export function SignaturePreview({
     <section className="panel preview-panel">
       <div className="panel-head">
         <div>
-          <p className="panel-eyebrow">{copy.stepPreview}</p>
+          <p className="panel-eyebrow">
+            <StepIcon kind="preview" />
+            {copy.stepPreview}
+          </p>
           <h2>{copy.previewTitle}</h2>
           <p>{copy.copyHint}</p>
         </div>
@@ -258,7 +262,9 @@ export function SignaturePreview({
           </div>
 
           <div className="mail-body" dir={bodyDir}>
-            <div className="mail-message">
+            <div
+              className={`mail-message${signatureLang === 'fa' ? ' is-fa' : ''}`}
+            >
               {bodyText.split('\n').map((line, i) => (
                 <p key={i}>{line || '\u00A0'}</p>
               ))}
@@ -282,6 +288,39 @@ export function SignaturePreview({
           onClick={handleCopy}
           disabled={!ready}
         >
+          {status === 'ok' ? (
+            <svg className="btn-icon" viewBox="0 0 24 24" aria-hidden>
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          ) : (
+            <svg className="btn-icon" viewBox="0 0 24 24" aria-hidden>
+              <rect
+                x="8"
+                y="8"
+                width="12"
+                height="12"
+                rx="2"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 16V6a2 2 0 0 1 2-2h10"
+              />
+            </svg>
+          )}
           {status === 'ok' ? copy.copied : copy.copyHtml}
         </button>
         {!ready && <p className="hint">{copy.requiredNote}</p>}

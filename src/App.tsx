@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { SignatureForm } from './components/SignatureForm'
 import { SignaturePreview } from './components/SignaturePreview'
 import { InstallGuide } from './components/InstallGuide'
+import { StepIcon } from './components/StepIcon'
 import {
   EMPTY_FORM,
   SAMPLE_FORM,
@@ -26,13 +27,22 @@ function App() {
           <p className="lede">{copy.appSubtitle}</p>
           <nav className="steps" aria-label="مراحل">
             <span>
-              <em>1</em> {copy.stepInfo}
+              <em>
+                <StepIcon kind="info" />
+              </em>
+              {copy.stepInfo}
             </span>
             <span>
-              <em>2</em> {copy.stepPreview}
+              <em>
+                <StepIcon kind="preview" />
+              </em>
+              {copy.stepPreview}
             </span>
             <span>
-              <em>3</em> {copy.stepGuide}
+              <em>
+                <StepIcon kind="guide" />
+              </em>
+              {copy.stepGuide}
             </span>
           </nav>
         </section>
@@ -63,7 +73,7 @@ function App() {
         <p className="footer-credit">
           <span>{copy.footerMade}</span>{' '}
           <span className="heart" aria-hidden>
-            ♥
+            💛
           </span>{' '}
           <span>{copy.footerBy}</span>
           <span className="footer-sep" aria-hidden>
