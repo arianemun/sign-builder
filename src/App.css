@@ -737,8 +737,7 @@ body {
   font-family: 'Peyda', Tahoma, sans-serif;
 }
 
-.signature-frame.is-fonts-ready .sig-fa {
-  /* Peyda metrics locked in after load — avoids swap jump looking “ریخته” */
+.signature-frame.is-fonts-ready .sig-root {
   font-family: 'Peyda', Tahoma, Arial, sans-serif !important;
 }
 
@@ -835,28 +834,26 @@ body {
   display: block;
 }
 
-/* FA HTML signature: lock pixel canvas so overlay text stays aligned */
+/* FA table signature: fixed width; height follows content (Outlook-safe layout) */
 .signature-frame .sig-root {
   width: 411px !important;
   max-width: none !important;
-  height: 172px !important;
-  overflow: hidden !important;
-  /* Beat .mail-window Segoe UI so Peyda always wins in preview */
+  height: auto !important;
+  overflow: visible !important;
   font-family: 'Peyda', Tahoma, Arial, sans-serif !important;
+  border-collapse: collapse !important;
 }
 
-.signature-frame .sig-root .sig-fa,
-.signature-frame .sig-root .sig-fa a {
+.signature-frame .sig-root .sig-fa-text,
+.signature-frame .sig-root .sig-fa-text td,
+.signature-frame .sig-root .sig-fa-text a {
   font-family: 'Peyda', Tahoma, Arial, sans-serif !important;
   letter-spacing: normal !important;
   font-synthesis: none;
 }
 
-.signature-frame .sig-root .sig-bg,
-.signature-frame .sig-root > img {
+.signature-frame .sig-root img {
   max-width: none !important;
-  width: 411px !important;
-  height: 172px !important;
 }
 
 .mail-signature {
@@ -865,7 +862,7 @@ body {
   filter: none;
 }
 
-/* EN SVG may shrink via viewBox; FA bg image must NOT (see .sig-root rules) */
+/* EN SVG may shrink via viewBox */
 .signature-frame svg {
   max-width: 100%;
   height: auto;

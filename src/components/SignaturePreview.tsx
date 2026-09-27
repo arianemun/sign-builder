@@ -73,7 +73,12 @@ export function SignaturePreview({
   onSignatureLangChange,
   data,
 }: SignaturePreviewProps) {
-  const html = buildSignatureHtml(data, signatureLang)
+  const assetBase =
+    typeof window !== 'undefined' ? window.location.origin : undefined
+  const html = buildSignatureHtml(data, signatureLang, { assetBase })
+  const copyHtml = buildSignatureHtml(data, signatureLang, {
+    assetBase: 'https://sign.sepfa.ir',
+  })
   const ready = canCopySignature(data, signatureLang)
   const [status, setStatus] = useState<'idle' | 'ok' | 'err'>('idle')
   const [fontsReady, setFontsReady] = useState(false)
@@ -102,27 +107,22 @@ export function SignaturePreview({
     }
   }, [])
 
-  /* Scale FA HTML signature as one unit — never let the bg image shrink alone */
+  /* Scale signature table as one unit on narrow preview */
   useEffect(() => {
     const frame = frameRef.current
     if (!frame) return
 
     const fit = () => {
-      const table = frame.querySelector('table')
+      const table = frame.querySelector('table.sig-root') as HTMLElement | null
       if (!table) return
 
-      const isFaHtml = Boolean(frame.querySelector('.sig-root'))
       const available = frame.clientWidth || SIGNATURE_WIDTH
-      const scale = isFaHtml
-        ? Math.min(1, available / SIGNATURE_WIDTH)
-        : 1
+      const scale = Math.min(1, available / SIGNATURE_WIDTH)
 
       table.style.transformOrigin =
         signatureLang === 'fa' ? 'top right' : 'top left'
       table.style.transform = scale < 0.999 ? `scale(${scale})` : ''
-      frame.style.height = isFaHtml
-        ? `${Math.round(SIGNATURE_HEIGHT * scale)}px`
-        : ''
+      frame.style.height = `${Math.round((table.offsetHeight || SIGNATURE_HEIGHT) * scale)}px`
     }
 
     fit()
@@ -133,7 +133,7 @@ export function SignaturePreview({
 
   const handleCopy = async () => {
     if (!ready || !frameRef.current) return
-    const ok = await copySignatureFromElement(frameRef.current, html)
+    const ok = await copySignatureFromElement(frameRef.current, copyHtml)
     setStatus(ok ? 'ok' : 'err')
     if (timer.current) window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => setStatus('idle'), 2200)

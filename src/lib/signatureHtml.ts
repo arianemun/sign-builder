@@ -1,57 +1,43 @@
 import type { SignatureFormData, SignatureLang } from '../types'
 import { fullEmail } from '../types'
-import {
-  SIGNATURE_BASE_EN_DATA_URL,
-  SIGNATURE_BASE_FA_DATA_URL,
-} from './logoData'
 
-/** Official SEPEX SVG canvas */
+/** Official SEPEX canvas size */
 export const SIGNATURE_WIDTH = 411
 export const SIGNATURE_HEIGHT = 172
 
 const INK = '#231F20'
+const YELLOW = '#FFCC04'
 const SITE_URL = 'https://sepex.net'
+/** Fallback when building outside the browser (or unknown host) */
+const DEFAULT_ASSET_BASE = 'https://sign.sepfa.ir'
 
-/** Clickable logo hotspots from EN.svg / FA.svg path boxes */
-const LOGO_HIT = {
-  en: {
-    mark: { x: 23.38, y: 62.79, w: 101.71, h: 40.6 },
-    wordmark: { x: 153.77, y: 126.46, w: 97.62, h: 22.77 },
-  },
-  fa: {
-    mark: { x: 285.84, y: 62.79, w: 101.71, h: 40.6 },
-    wordmark: { x: 159.61, y: 126.46, w: 97.62, h: 22.77 },
-  },
-} as const
+export interface SignatureHtmlOptions {
+  /** Absolute origin for hosted PNG assets, e.g. https://sign.sepfa.ir */
+  assetBase?: string
+}
 
-/**
- * EN stays SVG <text> (Latin renders fine).
- * FA uses HTML overlay — mobile WebKit breaks Persian shaping in SVG <text>.
- */
-const EN = {
-  name: { x: 155.65, y: 38.8, fontSize: 24.55, letterSpacing: 0 },
-  title: { x: 154.24, y: 58.11, fontSize: 9.9, letterSpacing: 0.017 },
-  phoneLabel: { x: 154.62, y: 78.01, fontSize: 9.55, letterSpacing: -0.012 },
-  phoneValue: { x: 185.42, y: 78.9, fontSize: 9.9, letterSpacing: 0.006 },
-  mobile: { x: 185.42, y: 93.34, fontSize: 9.9, letterSpacing: 0.007 },
-  emailLabel: { x: 154.62, y: 105.01, fontSize: 9.45, letterSpacing: 0.009 },
-  emailValue: { x: 184.33, y: 105.75, fontSize: 10.5, letterSpacing: -0.001 },
-  contactUs: { x: 276.01, y: 136.25, fontSize: 7.9, letterSpacing: -0.013 },
-  website: { x: 275.92, y: 143.57, fontSize: 7.9, letterSpacing: 0.004 },
-} as const
+function resolveAssetBase(override?: string): string {
+  if (override?.trim()) {
+    const base = override.replace(/\/$/, '')
+    // Pasted signatures cannot load localhost images inside Gmail/Outlook
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(base)) {
+      return DEFAULT_ASSET_BASE
+    }
+    return base
+  }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const origin = window.location.origin.replace(/\/$/, '')
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+      return origin // preview still uses local assets
+    }
+    return origin
+  }
+  return DEFAULT_ASSET_BASE
+}
 
-/** FA positions: ink-box tops + right edges from FA.svg (no letter-spacing — breaks Arabic join on mobile) */
-const FA_HTML = {
-  name: { right: 153.3, top: 22.5, fontSize: 24.85, weight: 700 },
-  title: { right: 156.41, top: 54.5, fontSize: 9.7, weight: 500 },
-  phoneLabel: { right: 153.88, top: 71.8, fontSize: 9.5, weight: 400 },
-  phoneValue: { right: 177.07, top: 71.2, fontSize: 10.6, weight: 400 },
-  mobile: { right: 178.04, top: 84.6, fontSize: 11.05, weight: 400 },
-  emailLabel: { right: 154.76, top: 97.6, fontSize: 9.55, weight: 400 },
-  emailValue: { right: 181.13, top: 97.2, fontSize: 10.5, weight: 400 },
-  stayInTouch: { right: 277.26, top: 128.8, fontSize: 7.95, weight: 400 },
-  website: { left: 97.56, top: 138.2, fontSize: 7.9, weight: 600 },
-} as const
+function assetUrl(base: string, file: string): string {
+  return `${base}/signature/${file}`
+}
 
 function escapeXml(value: string): string {
   return value
@@ -101,127 +87,108 @@ function formatPhoneValueFa(phone: string, ext: string): string {
   return base
 }
 
-function svgLink(href: string, inner: string): string {
-  const external = href.startsWith('http')
-  const attrs = external
-    ? ` href="${escapeXml(href)}" target="_blank" rel="noopener noreferrer"`
-    : ` href="${escapeXml(href)}"`
-  return `<a${attrs}>${inner}</a>`
+function mailLink(
+  href: string,
+  content: string,
+  font: string,
+  size: number,
+  weight = 400,
+): string {
+  const extra = href.startsWith('http')
+    ? ' target="_blank" rel="noopener noreferrer"'
+    : ''
+  return `<a href="${escapeXml(href)}"${extra} style="color:${INK};text-decoration:none;font-family:${font};font-size:${size}px;font-weight:${weight};line-height:1.25;">${content}</a>`
 }
 
-function logoHitAreas(lang: SignatureLang): string {
-  const hits = LOGO_HIT[lang]
-  return [
-    svgLink(
-      SITE_URL,
-      `<rect x="${hits.mark.x}" y="${hits.mark.y}" width="${hits.mark.w}" height="${hits.mark.h}" fill="#FFCC04" fill-opacity="0"/>`,
-    ),
-    svgLink(
-      SITE_URL,
-      `<rect x="${hits.wordmark.x}" y="${hits.wordmark.y}" width="${hits.wordmark.w}" height="${hits.wordmark.h}" fill="#FFCC04" fill-opacity="0"/>`,
-    ),
-  ].join('\n        ')
+function imgTag(src: string, width: number, height: number, alt: string): string {
+  return `<img src="${escapeXml(src)}" width="${width}" height="${height}" alt="${escapeXml(alt)}" border="0" style="display:block;border:0;outline:none;text-decoration:none;width:${width}px;height:${height}px;" />`
 }
 
-function htmlLogoHits(lang: SignatureLang): string {
-  const hits = LOGO_HIT[lang]
-  const linkStyle =
-    'position:absolute;display:block;z-index:2;text-decoration:none;'
-  return [
-    `<a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="${linkStyle}left:${hits.mark.x}px;top:${hits.mark.y}px;width:${hits.mark.w}px;height:${hits.mark.h}px;" aria-label="SEPEX"></a>`,
-    `<a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="${linkStyle}left:${hits.wordmark.x}px;top:${hits.wordmark.y}px;width:${hits.wordmark.w}px;height:${hits.wordmark.h}px;" aria-label="sepex.net"></a>`,
-  ].join('')
-}
+/**
+ * Outlook + Gmail safe signature:
+ * - nested tables + bgcolor (Outlook/Word)
+ * - hosted PNG images with absolute https URLs (Gmail blocks data:/SVG)
+ */
+function buildFa(data: SignatureFormData, assetBase: string): string {
+  const name = escapeXml(data.nameFa || data.nameEn || 'نام شما')
+  const title = escapeXml(data.titleFa || data.titleEn || '')
+  const phoneRaw = data.phone || '021-62040'
+  const mobileRaw = data.mobile || ''
+  const phoneValue = escapeXml(formatPhoneValueFa(phoneRaw, data.phoneExt))
+  const mobile = escapeXml(toFaDigits(mobileRaw))
+  const emailAddr = fullEmail(data.email)
+  const email = escapeXml(emailAddr)
+  const phoneTel = toTelHref(phoneRaw)
+  const mobileTel = toTelHref(mobileRaw)
 
-function svgText(opts: {
-  x: number
-  y: number
-  fontSize: number
-  font: string
-  weight?: number
-  letterSpacing?: number
-  anchor?: 'start' | 'end' | 'middle'
-  direction?: 'ltr' | 'rtl'
-  href?: string
-  content: string
-}): string {
-  const weight = opts.weight ?? 400
-  const anchor = opts.anchor ?? 'start'
-  const tracking =
-    opts.letterSpacing && Math.abs(opts.letterSpacing) > 0.0005
-      ? ` letter-spacing="${opts.letterSpacing}"`
-      : ''
-  const dir = opts.direction ? ` direction="${opts.direction}"` : ''
-  const unicodeBidi = opts.direction === 'ltr' ? ' unicode-bidi="isolate"' : ''
+  const faFont = 'Tahoma, Arial, sans-serif'
+  const enFont = 'Helvetica, Arial, sans-serif'
+  const markSrc = assetUrl(assetBase, 'mark-fa.png')
+  const wordSrc = assetUrl(assetBase, 'wordmark.png')
 
-  const text = `<text x="${opts.x}" y="${opts.y}" text-anchor="${anchor}"${dir}${unicodeBidi} font-family="${opts.font}" font-size="${opts.fontSize}" font-weight="${weight}" fill="${INK}"${tracking}>${opts.content}</text>`
+  const line = (
+    content: string,
+    size: number,
+    weight = 400,
+    padTop = 0,
+  ) =>
+    `<tr><td align="right" dir="rtl" style="padding:${padTop}px 0 0 0;margin:0;font-family:${faFont};font-size:${size}px;font-weight:${weight};line-height:1.25;color:${INK};mso-line-height-rule:exactly;">${content}</td></tr>`
 
-  if (opts.href) return svgLink(opts.href, text)
-  return text
-}
+  const phoneCell = phoneTel
+    ? `تلفن:&nbsp;${mailLink(phoneTel, phoneValue, faFont, 11)}`
+    : `تلفن:&nbsp;${phoneValue}`
+  const mobileCell = mobileTel
+    ? mailLink(mobileTel, mobile, faFont, 11)
+    : mobile
+  const emailCell = emailAddr
+    ? `ایمیل:&nbsp;${mailLink(`mailto:${emailAddr}`, email, enFont, 11)}`
+    : `ایمیل:&nbsp;${email}`
 
-function htmlText(opts: {
-  left?: number
-  right?: number
-  top: number
-  fontSize: number
-  font: string
-  weight?: number
-  align?: 'left' | 'right'
-  dir?: 'ltr' | 'rtl'
-  href?: string
-  content: string
-}): string {
-  const weight = opts.weight ?? 400
-  const align =
-    opts.align ?? (opts.right !== undefined ? 'right' : 'left')
-  const horiz =
-    opts.right !== undefined
-      ? `right:${opts.right}px;left:auto;`
-      : `left:${opts.left ?? 0}px;`
-  const dir = opts.dir ?? 'rtl'
-  const isFa = dir === 'rtl' || /Peyda/i.test(opts.font)
-  const style = `position:absolute;${horiz}top:${opts.top}px;z-index:1;margin:0;padding:0;font-family:${opts.font};font-size:${opts.fontSize}px;line-height:1.2;font-weight:${weight};color:${INK};white-space:nowrap;text-align:${align};letter-spacing:normal;unicode-bidi:isolate;-webkit-font-smoothing:antialiased;`
-  const inner = opts.href
-    ? `<a href="${escapeXml(opts.href)}"${opts.href.startsWith('http') ? ' target="_blank" rel="noopener noreferrer"' : ''} style="color:${INK};text-decoration:none;font:inherit;letter-spacing:normal;">${opts.content}</a>`
-    : opts.content
-  return `<div class="${isFa ? 'sig-fa' : 'sig-en'}" dir="${dir}" lang="${dir === 'rtl' ? 'fa' : 'en'}" style="${style}">${inner}</div>`
-}
+  const textBlock = `
+<table dir="rtl" lang="fa" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+  ${line(name, 24, 700)}
+  ${title ? line(title, 10, 500, 6) : ''}
+  ${line(phoneCell, 10, 400, 10)}
+  ${mobile ? line(mobileCell, 11, 400, 3) : ''}
+  ${line(emailCell, 10, 400, 3)}
+</table>`.trim()
 
-function wrapSvg(baseHref: string, body: string, lang: SignatureLang): string {
   return `
-<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0;mso-table-rspace:0;">
+<table dir="rtl" lang="fa" cellpadding="0" cellspacing="0" border="0" width="${SIGNATURE_WIDTH}" role="presentation" style="width:${SIGNATURE_WIDTH}px;max-width:${SIGNATURE_WIDTH}px;border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:${YELLOW};">
   <tr>
-    <td style="padding:0;margin:0;line-height:0;font-size:0;">
-      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${SIGNATURE_WIDTH}" height="${SIGNATURE_HEIGHT}" viewBox="0 0 ${SIGNATURE_WIDTH} ${SIGNATURE_HEIGHT}" direction="ltr" style="display:block;max-width:100%;height:auto;" role="img" aria-label="SEPEX email signature">
-        <image href="${baseHref}" xlink:href="${baseHref}" width="${SIGNATURE_WIDTH}" height="${SIGNATURE_HEIGHT}" preserveAspectRatio="none"/>
-        ${logoHitAreas(lang)}
-        ${body}
-      </svg>
+    <td width="128" valign="middle" align="center" bgcolor="${YELLOW}" style="width:128px;padding:28px 14px 10px 10px;background-color:${YELLOW};">
+      <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">
+        ${imgTag(markSrc, 102, 41, 'SEPEX')}
+      </a>
+    </td>
+    <td width="283" valign="top" bgcolor="${YELLOW}" style="width:283px;padding:16px 14px 6px 8px;background-color:${YELLOW};">
+      ${textBlock}
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" bgcolor="${YELLOW}" style="padding:8px 16px 14px 16px;background-color:${YELLOW};">
+      <table dir="rtl" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;width:100%;">
+        <tr>
+          <td width="120" valign="bottom" align="right" style="padding:0;font-family:${faFont};font-size:8px;line-height:1.3;color:${INK};">
+            ${mailLink(SITE_URL, 'با ما در ارتباط باشید', faFont, 8)}
+          </td>
+          <td width="171" valign="bottom" align="center" style="padding:0 6px;">
+            <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">
+              ${imgTag(wordSrc, 98, 23, 'SEPEX')}
+            </a>
+          </td>
+          <td width="120" valign="bottom" align="left" dir="ltr" style="padding:0;font-family:${enFont};font-size:8px;font-weight:600;line-height:1.3;color:${INK};">
+            ${mailLink(SITE_URL, 'sepex.net', enFont, 8, 600)}
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>
   `.trim()
 }
 
-function wrapHtmlFa(body: string): string {
-  /* Fixed canvas — never shrink the overlay box; preview scales the whole table. */
-  return `
-<table class="sig-table" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0;mso-table-rspace:0;width:${SIGNATURE_WIDTH}px;">
-  <tr>
-    <td style="padding:0;margin:0;width:${SIGNATURE_WIDTH}px;height:${SIGNATURE_HEIGHT}px;">
-      <div class="sig-root" dir="rtl" lang="fa" style="position:relative;width:${SIGNATURE_WIDTH}px;height:${SIGNATURE_HEIGHT}px;overflow:hidden;line-height:normal;font-size:0;-webkit-text-size-adjust:100%;text-size-adjust:100%;">
-        <img class="sig-bg" src="${SIGNATURE_BASE_FA_DATA_URL}" width="${SIGNATURE_WIDTH}" height="${SIGNATURE_HEIGHT}" alt="" draggable="false" style="position:absolute;left:0;top:0;width:${SIGNATURE_WIDTH}px;height:${SIGNATURE_HEIGHT}px;max-width:none;display:block;border:0;outline:none;" />
-        ${htmlLogoHits('fa')}
-        ${body}
-      </div>
-    </td>
-  </tr>
-</table>
-  `.trim()
-}
-
-function buildEn(data: SignatureFormData): string {
+function buildEn(data: SignatureFormData, assetBase: string): string {
   const name = escapeXml(data.nameEn || data.nameFa || 'Your Name')
   const title = escapeXml(data.titleEn || data.titleFa || '')
   const phoneRaw = data.phone || '021-62040'
@@ -233,129 +200,81 @@ function buildEn(data: SignatureFormData): string {
   const phoneTel = toTelHref(phoneRaw)
   const mobileTel = toTelHref(mobileRaw)
   const font = 'Helvetica, Arial, sans-serif'
+  const markSrc = assetUrl(assetBase, 'mark-en.png')
+  const wordSrc = assetUrl(assetBase, 'wordmark.png')
 
-  const body = [
-    svgText({ ...EN.name, font, weight: 700, content: name }),
-    svgText({ ...EN.title, font, content: title }),
-    svgText({ ...EN.phoneLabel, font, content: 'Phone:' }),
-    svgText({
-      ...EN.phoneValue,
-      font,
-      href: phoneTel || undefined,
-      content: phoneValue,
-    }),
-    svgText({
-      ...EN.mobile,
-      font,
-      href: mobileTel || undefined,
-      content: mobile,
-    }),
-    svgText({ ...EN.emailLabel, font, content: 'Email:' }),
-    svgText({
-      ...EN.emailValue,
-      font,
-      href: emailAddr ? `mailto:${emailAddr}` : undefined,
-      content: email,
-    }),
-    svgText({
-      ...EN.contactUs,
-      font,
-      href: SITE_URL,
-      content: 'Contact Us',
-    }),
-    svgText({
-      ...EN.website,
-      font,
-      weight: 600,
-      href: SITE_URL,
-      content: 'sepex.net',
-    }),
-  ].join('\n        ')
+  const line = (
+    content: string,
+    size: number,
+    weight = 400,
+    padTop = 0,
+  ) =>
+    `<tr><td align="left" dir="ltr" style="padding:${padTop}px 0 0 0;margin:0;font-family:${font};font-size:${size}px;font-weight:${weight};line-height:1.25;color:${INK};mso-line-height-rule:exactly;">${content}</td></tr>`
 
-  return wrapSvg(SIGNATURE_BASE_EN_DATA_URL, body, 'en')
-}
+  const phoneCell = phoneTel
+    ? `Phone:&nbsp;${mailLink(phoneTel, phoneValue, font, 10)}`
+    : `Phone:&nbsp;${phoneValue}`
+  const mobileCell = mobileTel
+    ? mailLink(mobileTel, mobile, font, 10)
+    : mobile
+  const emailCell = emailAddr
+    ? `Email:&nbsp;${mailLink(`mailto:${emailAddr}`, email, font, 10)}`
+    : `Email:&nbsp;${email}`
 
-function buildFa(data: SignatureFormData): string {
-  const name = escapeXml(data.nameFa || data.nameEn || 'نام شما')
-  const title = escapeXml(data.titleFa || data.titleEn || '')
-  const phoneRaw = data.phone || '021-62040'
-  const mobileRaw = data.mobile || ''
-  const phoneValue = escapeXml(formatPhoneValueFa(phoneRaw, data.phoneExt))
-  const mobile = escapeXml(toFaDigits(mobileRaw))
-  const emailAddr = fullEmail(data.email)
-  const email = escapeXml(emailAddr)
-  const phoneTel = toTelHref(phoneRaw)
-  const mobileTel = toTelHref(mobileRaw)
-  const font = "'Peyda', Tahoma, Arial, sans-serif"
-  const enFont = 'Helvetica, Arial, sans-serif'
+  const textBlock = `
+<table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+  ${line(name, 24, 700)}
+  ${title ? line(title, 10, 400, 6) : ''}
+  ${line(phoneCell, 10, 400, 10)}
+  ${mobile ? line(mobileCell, 10, 400, 3) : ''}
+  ${line(emailCell, 10, 400, 3)}
+</table>`.trim()
 
-  const body = [
-    htmlText({ ...FA_HTML.name, font, dir: 'rtl', align: 'right', content: name }),
-    htmlText({ ...FA_HTML.title, font, dir: 'rtl', align: 'right', content: title }),
-    htmlText({
-      ...FA_HTML.phoneLabel,
-      font,
-      dir: 'rtl',
-      align: 'right',
-      content: 'تلفن:',
-    }),
-    htmlText({
-      ...FA_HTML.phoneValue,
-      font,
-      dir: 'ltr',
-      align: 'right',
-      href: phoneTel || undefined,
-      content: phoneValue,
-    }),
-    htmlText({
-      ...FA_HTML.mobile,
-      font,
-      dir: 'ltr',
-      align: 'right',
-      href: mobileTel || undefined,
-      content: mobile,
-    }),
-    htmlText({
-      ...FA_HTML.emailLabel,
-      font,
-      dir: 'rtl',
-      align: 'right',
-      content: 'ایمیل:',
-    }),
-    htmlText({
-      ...FA_HTML.emailValue,
-      font: enFont,
-      dir: 'ltr',
-      align: 'right',
-      href: emailAddr ? `mailto:${emailAddr}` : undefined,
-      content: email,
-    }),
-    htmlText({
-      ...FA_HTML.stayInTouch,
-      font,
-      dir: 'rtl',
-      align: 'right',
-      href: SITE_URL,
-      content: 'با ما در ارتباط باشید',
-    }),
-    htmlText({
-      ...FA_HTML.website,
-      font: enFont,
-      dir: 'ltr',
-      align: 'left',
-      href: SITE_URL,
-      content: 'sepex.net',
-    }),
-  ].join('')
-
-  return wrapHtmlFa(body)
+  return `
+<table dir="ltr" lang="en" cellpadding="0" cellspacing="0" border="0" width="${SIGNATURE_WIDTH}" role="presentation" style="width:${SIGNATURE_WIDTH}px;max-width:${SIGNATURE_WIDTH}px;border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:${YELLOW};">
+  <tr>
+    <td width="128" valign="middle" align="center" bgcolor="${YELLOW}" style="width:128px;padding:28px 10px 10px 14px;background-color:${YELLOW};">
+      <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">
+        ${imgTag(markSrc, 102, 41, 'SEPEX')}
+      </a>
+    </td>
+    <td width="283" valign="top" bgcolor="${YELLOW}" style="width:283px;padding:16px 8px 6px 14px;background-color:${YELLOW};">
+      ${textBlock}
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" bgcolor="${YELLOW}" style="padding:8px 16px 14px 16px;background-color:${YELLOW};">
+      <table dir="ltr" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="border-collapse:collapse;border-spacing:0;width:100%;">
+        <tr>
+          <td width="120" valign="bottom" align="left" style="padding:0;">
+            <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border:0;outline:none;">
+              ${imgTag(wordSrc, 98, 23, 'SEPEX')}
+            </a>
+          </td>
+          <td valign="bottom" align="right" style="padding:0;font-family:${font};font-size:8px;line-height:1.35;color:${INK};">
+            ${mailLink(SITE_URL, 'Contact Us', font, 8)}<br />
+            ${mailLink(SITE_URL, 'sepex.net', font, 8, 600)}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `.trim()
 }
 
 export function buildSignatureHtml(
   data: SignatureFormData,
   lang: SignatureLang,
+  options: SignatureHtmlOptions = {},
 ): string {
-  return lang === 'fa' ? buildFa(data) : buildEn(data)
+  const assetBase = resolveAssetBase(options.assetBase)
+  const html = lang === 'fa' ? buildFa(data, assetBase) : buildEn(data, assetBase)
+  /* Outer wrapper class for preview scaling only — Gmail strips class, keeps table */
+  return html.replace(
+    '<table ',
+    '<table class="sig-root" ',
+  )
 }
 
 export function canCopySignature(
