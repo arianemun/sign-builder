@@ -386,15 +386,29 @@ body {
   font-weight: 700;
   font-size: var(--text-sm);
   min-height: 2.2rem;
-  padding: 0.4rem 0.95rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 999px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: normal;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .segmented button.active {
   background: var(--yellow);
   color: var(--black);
+}
+
+.lang-opt-icon {
+  width: 1.15rem;
+  height: 0.78rem;
+  flex-shrink: 0;
+  border-radius: 2px;
+  display: block;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
 }
 
 .lang-switch {
@@ -407,8 +421,19 @@ body {
 }
 
 .lang-switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-weight: 700;
   font-size: var(--text-base);
+  letter-spacing: normal;
+}
+
+.lang-switch-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  color: #8a6d00;
 }
 
 .mail-demo {
@@ -955,7 +980,9 @@ body {
   border-radius: 14px;
   background: #fffdf7;
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .guide-item.open {
@@ -997,7 +1024,7 @@ body {
   object-fit: contain;
 }
 
-.chevron {
+.guide-expand {
   width: 1.7rem;
   height: 1.7rem;
   display: grid;
@@ -1005,9 +1032,48 @@ body {
   border-radius: 999px;
   background: var(--yellow);
   color: var(--black);
-  font-size: 1.15rem;
-  line-height: 1;
   flex-shrink: 0;
+  transition:
+    transform 0.28s ease,
+    background 0.2s ease;
+}
+
+.guide-item.open .guide-expand {
+  transform: rotate(180deg);
+  background: #141414;
+  color: var(--yellow);
+}
+
+.guide-expand-svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: block;
+}
+
+.guide-expand-h,
+.guide-expand-v {
+  transition: transform 0.28s ease, opacity 0.28s ease;
+  transform-origin: center;
+}
+
+.guide-item.open .guide-expand-v {
+  transform: scaleY(0);
+  opacity: 0;
+}
+
+.guide-panel-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.32s ease;
+}
+
+.guide-item.open .guide-panel-body {
+  grid-template-rows: 1fr;
+}
+
+.guide-panel-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .guide-steps {
@@ -1018,6 +1084,17 @@ body {
   color: #333027;
   font-size: var(--text-sm);
   line-height: 1.55;
+  opacity: 0;
+  transform: translateY(-0.35rem);
+  transition:
+    opacity 0.25s ease,
+    transform 0.28s ease;
+}
+
+.guide-item.open .guide-steps {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.04s;
 }
 
 .footer {
@@ -1110,6 +1187,14 @@ body {
 
   .btn:hover:not(:disabled) {
     transform: none;
+  }
+
+  .guide-expand,
+  .guide-expand-h,
+  .guide-expand-v,
+  .guide-panel-body,
+  .guide-steps {
+    transition: none !important;
   }
 }
 

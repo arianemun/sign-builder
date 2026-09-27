@@ -153,13 +153,38 @@ export function SignaturePreview({
       </div>
 
       <div className="lang-switch" role="group" aria-label={copy.signatureLang}>
-        <span className="lang-switch-label">{copy.signatureLang}</span>
+        <span className="lang-switch-label">
+          <svg className="lang-switch-icon" viewBox="0 0 24 24" aria-hidden>
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+            <path
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              d="M3 12h18M12 3c2.5 2.8 3.8 5.8 3.8 9s-1.3 6.2-3.8 9c-2.5-2.8-3.8-5.8-3.8-9S9.5 5.8 12 3z"
+            />
+          </svg>
+          {copy.signatureLang}
+        </span>
         <div className="segmented">
           <button
             type="button"
             className={signatureLang === 'fa' ? 'active' : ''}
             onClick={() => onSignatureLangChange('fa')}
           >
+            <svg className="lang-opt-icon" viewBox="0 0 24 16" aria-hidden>
+              <rect width="24" height="16" rx="2" fill="#239F40" />
+              <rect y="5.33" width="24" height="5.34" fill="#fff" />
+              <rect y="10.67" width="24" height="5.33" fill="#DA0000" />
+              <circle cx="12" cy="8" r="1.35" fill="none" stroke="#DA0000" strokeWidth="0.7" />
+            </svg>
             {copy.langFa}
           </button>
           <button
@@ -167,6 +192,13 @@ export function SignaturePreview({
             className={signatureLang === 'en' ? 'active' : ''}
             onClick={() => onSignatureLangChange('en')}
           >
+            <svg className="lang-opt-icon" viewBox="0 0 24 16" aria-hidden>
+              <rect width="24" height="16" rx="2" fill="#012169" />
+              <path stroke="#fff" strokeWidth="2.6" d="M0 0l24 16M24 0L0 16" />
+              <path stroke="#C8102E" strokeWidth="1.3" d="M0 0l24 16M24 0L0 16" />
+              <path fill="#fff" d="M9.5 0h5v16h-5zM0 5.5h24v5H0z" />
+              <path fill="#C8102E" d="M10.5 0h3v16h-3zM0 6.5h24v3H0z" />
+            </svg>
             {copy.langEn}
           </button>
         </div>
