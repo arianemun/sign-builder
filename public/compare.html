@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Signature vs SVG compare</title>
+    <style>
+      @font-face {
+        font-family: 'Peyda';
+        src: url('/fonts/peyda/Peyda-Bold.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'Peyda';
+        src: url('/fonts/peyda/Peyda-Medium.woff2') format('woff2');
+        font-weight: 500;
+      }
+      @font-face {
+        font-family: 'Peyda';
+        src: url('/fonts/peyda/Peyda-Regular.woff2') format('woff2');
+        font-weight: 400;
+      }
+      body {
+        margin: 24px;
+        background: #222;
+        color: #fff;
+        font-family: Helvetica, Arial, sans-serif;
+      }
+      .row {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        margin-bottom: 32px;
+      }
+      .pair {
+        position: relative;
+        width: 411px;
+        height: 172px;
+      }
+      .pair img.template {
+        position: absolute;
+        inset: 0;
+        width: 411px;
+        height: 172px;
+        opacity: 0.45;
+        z-index: 2;
+        pointer-events: none;
+        mix-blend-mode: multiply;
+      }
+      .pair .live {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+      h2 {
+        margin: 0 0 8px;
+      }
+      label {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Compare live signature vs SVG template</h1>
+    <label
+      ><input type="checkbox" id="overlay" checked /> Show SVG template
+      overlay</label
+    >
+
+    <h2>EN</h2>
+    <div class="row">
+      <div>
+        <p>Template only</p>
+        <img src="/template-en.svg" width="411" height="172" alt="EN template" />
+      </div>
+      <div>
+        <p>Live over template</p>
+        <div class="pair" id="en-pair">
+          <div class="live" id="en-live"></div>
+          <img class="template" src="/template-en.svg" alt="" />
+        </div>
+      </div>
+    </div>
+
+    <h2>FA</h2>
+    <div class="row">
+      <div>
+        <p>Template only</p>
+        <img src="/template-fa.svg" width="411" height="172" alt="FA template" />
+      </div>
+      <div>
+        <p>Live over template</p>
+        <div class="pair" id="fa-pair">
+          <div class="live" id="fa-live"></div>
+          <img class="template" src="/template-fa.svg" alt="" />
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { buildSignatureHtml } from '/src/lib/signatureHtml.ts'
+
+      const data = {
+        nameFa: 'نگار کاویانی',
+        nameEn: 'Negar Kaviani',
+        titleFa: 'کارشناس ارتباطات',
+        titleEn: 'Communications Specialist',
+        phone: '021-62040',
+        phoneExt: '218',
+        mobile: '09123456789',
+        email: 'negark',
+      }
+
+      document.getElementById('en-live').innerHTML = buildSignatureHtml(data, 'en')
+      document.getElementById('fa-live').innerHTML = buildSignatureHtml(data, 'fa')
+
+      const overlay = document.getElementById('overlay')
+      overlay.addEventListener('change', () => {
+        document.querySelectorAll('.pair img.template').forEach((img) => {
+          img.style.display = overlay.checked ? 'block' : 'none'
+        })
+      })
+    </script>
+  </body>
+</html>
